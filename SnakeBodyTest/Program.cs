@@ -6,7 +6,7 @@
         {
             var game = new Game();
 
-            game.Body();
+            game.Run();
 
             game.PrintHighScore();
             

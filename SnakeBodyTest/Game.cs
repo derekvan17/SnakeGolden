@@ -11,7 +11,7 @@ namespace Snake2
         public int Height = 40;
         public int Width = 100;
 
-        public Movement Movement { get; set; } //each piece of body has a movement direction assoicated with it
+        public Movement[] Movement = new Movement[2499];//Movement Movement { get; set; } //each piece of body has a movement direction assoicated with it
         public int[] SnakeX = new int[2499];
         public int[] SnakeY = new int[2499];
 
@@ -26,6 +26,14 @@ namespace Snake2
         public bool GameHasEnded;
         public int SnakeLength = 1;
         public int Speed;
+
+        public Dictionary<ConsoleKey, Movement> MovementMap = new Dictionary<ConsoleKey, Movement>
+        {
+            { ConsoleKey.RightArrow, Enumerations.Movement.Right },
+            { ConsoleKey.LeftArrow, Enumerations.Movement.Left },
+            { ConsoleKey.UpArrow, Enumerations.Movement.Up },
+            { ConsoleKey.DownArrow, Enumerations.Movement.Down }
+        };
 
         public Game()
         {
@@ -78,13 +86,14 @@ namespace Snake2
             }
         }
 
-        public void Body() //main loop of program, moves body
+        public void Run()
         {
-            Movement = Movement.Right;  //always start going in the right direction
-            while (!GameHasEnded) //main loop
+            Movement[1] = Enumerations.Movement.Right;
+
+            while (!GameHasEnded)
             {
-                Thread.Sleep(Speed); //refreshes at difficulty speed
-                EndCheck(); //ends game at any end conditions
+                Thread.Sleep(Speed);
+                EndCheck(); 
 
                 if (AppleX == SnakeX[1] && AppleY == SnakeY[1]) //check if the apple was got
                 {
@@ -92,10 +101,10 @@ namespace Snake2
                     BodyGrow();
                 }
 
-                //for (int i = SnakeLength; i > 0; i--) //index movement array
-                //{
-                //    Movement[i + 1] = Movement[i];
-                //}
+                for (int i = SnakeLength; i > 0; i--) //index movement array
+                {
+                    Movement[i + 1] = Movement[i];
+                }
 
                 Snake(); //draws snake every scan
                 Apple(); //draws apple every scan
@@ -104,44 +113,44 @@ namespace Snake2
                 {
                     var turn = Console.ReadKey(true).Key;
 
-                    if (turn.Equals(ConsoleKey.RightArrow) && Movement != Movement.Right)
+                    if (turn.Equals(ConsoleKey.RightArrow) && Movement[1] != Enumerations.Movement.Right)
                     {
-                        Movement = Movement.Right;
+                        Movement[1] = Enumerations.Movement.Right;
                     }
 
-                    if (turn.Equals(ConsoleKey.LeftArrow) && Movement != Movement.Left)
+                    if (turn.Equals(ConsoleKey.LeftArrow) && Movement[1] != Enumerations.Movement.Left)
                     {
-                        Movement = Movement.Left;
+                        Movement[1] = Enumerations.Movement.Left;
                     }
 
-                    if (turn.Equals(ConsoleKey.UpArrow) && Movement != Movement.Up)
+                    if (turn.Equals(ConsoleKey.UpArrow) && Movement[1] != Enumerations.Movement.Up)
                     {
-                        Movement = Movement.Up;
+                        Movement[1] = Enumerations.Movement.Up;
                     }
 
-                    if (turn.Equals(ConsoleKey.DownArrow) && Movement != Movement.Down)
+                    if (turn.Equals(ConsoleKey.DownArrow) && Movement[1] != Enumerations.Movement.Down)
                     {
-                        Movement = Movement.Down;
+                        Movement[1] = Enumerations.Movement.Down;
                     }
                 }
 
                 for (int i = 1; i <= SnakeLength; i++) //changes direction of snake based on key input
                 {
-                    switch (Movement)
+                    switch (Movement[i])
                     {
-                        case Movement.Right:
+                        case Enumerations.Movement.Right:
                             SnakeX[i]++;
                             break;
 
-                        case Movement.Left:
+                        case Enumerations.Movement.Left:
                             SnakeX[i]--;
                             break;
 
-                        case Movement.Down:
+                        case Enumerations.Movement.Down:
                             SnakeY[i]++;
                             break;
 
-                        case Movement.Up:
+                        case Enumerations.Movement.Up:
                             SnakeY[i]--;
                             break;
                     }
@@ -227,8 +236,15 @@ namespace Snake2
 
         public void InitBoard()
         {
-            Console.WindowHeight = Height;
-            Console.WindowWidth = Height;
+            if (Console.WindowHeight < Height)
+            {
+                Console.WindowHeight = Height;
+            }
+            
+            if (Console.WindowWidth < Width)
+            {
+                Console.WindowWidth = Width;
+            }
         }
 
         public void InitSnake() 
@@ -266,22 +282,22 @@ namespace Snake2
         {
             for (int i = 1; i <= SnakeLength; i++) //if a piece is got, the next piece's position is incremented here
             {
-                if (Movement == Movement.Right)
+                if (Movement[i] == Enumerations.Movement.Right)
                 {
                     SnakeX[i + 1] = SnakeX[i] - 1;
                     SnakeY[i + 1] = SnakeY[i];
                 }
-                else if (Movement == Movement.Left)
+                else if (Movement[i] == Enumerations.Movement.Left)
                 {
                     SnakeX[i + 1] = SnakeX[i] + 1;
                     SnakeY[i + 1] = SnakeY[i];
                 }
-                else if (Movement == Movement.Down)
+                else if (Movement[i] == Enumerations.Movement.Down)
                 {
                     SnakeY[i + 1] = SnakeY[i] - 1;
                     SnakeX[i + 1] = SnakeX[i];
                 }
-                else if (Movement == Movement.Up)
+                else if (Movement[i] == Enumerations.Movement.Up)
                 {
                     SnakeY[i + 1] = SnakeY[i] + 1;
                     SnakeX[i + 1] = SnakeX[i];
