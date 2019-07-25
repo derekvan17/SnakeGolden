@@ -1,102 +1,179 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static Snake2.Draw;
-using static System.Console;
+using System.Threading;
+using Snake2.Enumerations;
+using Snake2.Models;
 
 namespace Snake2
 {
-    class Game
+    public class Game
     {
-        public static int speed;
-        public static int death = 0;
-        public static int highScore = 1;
-        public static bool highScoreBool = false;
-        public static string highScoreStr = "nobody";
-        public static string diffSel;
-        public static bool end;
+        public Apple Apple { get; set; }
 
-        public static void Start() //difficulty prompt... i want this to return a value to the Main
+        public Snake Snake { get; set; }
+
+        public Dictionary<ConsoleKey, Movement> ConsoleKeyMovementMap = new Dictionary<ConsoleKey, Movement>
         {
-        restart:
-            end = false;
-            death = 0;
-            WriteLine("Welcome to SSSSSNAKE! Try not to die!\nSelect Difficulty: 1=Hardest 5=Easiest");
-            diffSel = ReadLine();
+            { ConsoleKey.RightArrow, Movement.Right },
+            { ConsoleKey.LeftArrow, Movement.Left },
+            { ConsoleKey.UpArrow, Movement.Up },
+            { ConsoleKey.DownArrow, Movement.Down }
+        };
+
+        public GameResult? Death { get; set; }
+
+        public string DiffSel { get; set; }
+
+        public int HighScore = 1;
+
+        public int Speed { get; set; }
+
+        public string UserHighScoreName { get; set; }
+        
+        public Game()
+        {
+            Start();
+
+            Apple = new Apple();
+
+            Snake = new Snake();
+        }
+        
+        public void Start()
+        {
+            Console.WriteLine("Welcome to SSSSSNAKE! Try not to die!\nSelect Difficulty: 1=Hardest 5=Easiest");
+
             int difficulty;
 
-            if(int.TryParse(diffSel, out difficulty) && difficulty <= 5 && difficulty >0)
+            if (int.TryParse(Console.ReadLine(), out difficulty) && difficulty <= 5 && difficulty > 0)
             {
-                speed = 30 * difficulty;
+                Speed = 30 * difficulty;
             }
             else
             {
-                Clear();
-                WriteLine("Invalid Difficulty Selection!");
-                goto restart;
+                Console.Clear();
+                Console.WriteLine("Invalid Difficulty Selection!");
+                Start();
             }
 
             switch (difficulty)
             {
                 case 1:
-                    diffSel = "expert";
+                    DiffSel = "expert";
                     break;
 
                 case 2:
-                    diffSel = "hard";
+                    DiffSel = "hard";
                     break;
 
                 case 3:
-                    diffSel = "medium";
+                    DiffSel = "medium";
                     break;
 
                 case 4:
-                    diffSel = "easy";
+                    DiffSel = "easy";
                     break;
 
                 case 5:
-                    diffSel = "very easy";
+                    DiffSel = "very easy";
                     break;
             }
+            
+            InitBoard();
         }
 
-        public static void EndCheck() //checks for game end... i want this to return a value to Move
+        public void Run()
         {
-
-            if (snakeX[1] <= 0 || snakeY[1] <= 0 || snakeX[1] == Init.width || snakeY[1] == Init.height) //border crash
+            while (!Death.HasValue)
             {
-                death = 1;
-                end = true;
-            }
+                Thread.Sleep(Speed);
 
-            for (int i = 2; i <= snakeLength; i++) //eaten itself
-            {
-                if (snakeX[1] == snakeX[i] && snakeY[1] == snakeY[i])
+                if (EndCheck())
                 {
-                    death = 2;
-                    end = true;
+                    break;
                 }
-            }
 
-            if(snakeLength > highScore) //check for high score
-            {
-                highScore = snakeLength;
-                highScoreBool = true;
-            }
+                if (Apple.AppleX == Snake.SnakeX[1] && Apple.AppleY == Snake.SnakeY[1])
+                {
+                    Apple.GotApple = true;
+                    Snake.BodyGrow();
+                }
+                
+                Console.Clear();
 
+                Scoreboard();
+
+                Snake.Draw();
+
+                Apple.Draw();
+
+                if (Console.KeyAvailable)
+                {
+                    Movement nextMovement;
+                    
+                    if (ConsoleKeyMovementMap.TryGetValue(Console.ReadKey(true).Key, out nextMovement) && nextMovement != Snake.Movement[1])
+                    {
+                        Snake.Movement[1] = nextMovement;
+                    }
+                }
+
+                Snake.Update();
+            }
         }
 
-        public static void HighScore() //if high score is acheived, enter name prompt
+        public bool EndCheck()
         {
-            if (highScoreBool)
-            {
-                WriteLine("Congratulations! New High Score of {0}!! Enter your name:", highScore - 1);
-                highScoreStr = ReadLine();
-                highScoreBool = false;
-            }
+            Death = Snake.CheckIfSnakeDied();
+
+            return Death.HasValue;
         }
 
+        public void PrintHighScore()
+        {
+            Console.Clear();
+
+            var snakeLength = Snake.SnakeLength;
+            
+            if (snakeLength > HighScore)
+            {
+                HighScore = snakeLength;
+                Console.WriteLine("Congratulations! New High Score of {0}!! Enter your name:", HighScore - 1);
+                UserHighScoreName = Console.ReadLine();
+            }
+
+            if (Death == GameResult.CrashedIntoWall)
+            {
+                Console.WriteLine("You ran into the wall, OUCH!");
+            }
+            else if (Death == GameResult.CrashedIntoSelf)
+            {
+                Console.WriteLine("You ate yourself, YUM!");
+            }
+
+            Console.WriteLine("You scored {0} on {1}\nHigh score is {2} held by {3}\nPress any key to play again. Press ctrl + c to exit."
+                , snakeLength - 1, DiffSel, HighScore - 1, UserHighScoreName);
+
+            Console.ReadLine();
+
+            Console.Clear();
+        }
+
+        public void Scoreboard()
+        {
+            Console.WriteLine("SSSSSNAKE!  Score: {0}  Difficulty: {1}  High Score: {2}", Snake.SnakeLength - 1, DiffSel, HighScore - 1);
+        }
+
+        public void InitBoard()
+        {
+            if (Console.WindowHeight < 40)
+            {
+                Console.WindowHeight = 40;
+            }
+            
+            if (Console.WindowWidth < 100)
+            {
+                Console.WindowWidth = 100;
+            }
+        }
     }
 }

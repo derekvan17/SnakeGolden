@@ -43,10 +43,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Draw.cs" />
+    <Compile Include="Enumerations.cs" />
     <Compile Include="Game.cs" />
-    <Compile Include="Init.cs" />
-    <Compile Include="Move.cs" />
+    <Compile Include="Models\Apple.cs" />
+    <Compile Include="Models\GamePiece.cs" />
+    <Compile Include="Models\IGamePiece.cs" />
+    <Compile Include="Models\Snake.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
