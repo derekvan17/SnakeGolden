@@ -1,57 +1,51 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using Snake2.Enumerations;
+using Snake2.Models;
 
 namespace Snake2
 {
     public class Game
     {
-        public int Height = 40;
-        public int Width = 100;
+        public Apple Apple { get; set; }
 
-        public Movement[] Movement = new Movement[2499];//Movement Movement { get; set; } //each piece of body has a movement direction assoicated with it
-        public int[] SnakeX = new int[2499];
-        public int[] SnakeY = new int[2499];
+        public Snake Snake { get; set; }
 
-        public int HighScore { get; set; }
-        public string UserHighScoreName { get; set; }
-
-        public bool AppleGot = false;
-        public int AppleX = 0;
-        public int AppleY = 0;
-        public int Death = 0;
-        public string DiffSel;
-        public bool GameHasEnded;
-        public int SnakeLength = 1;
-        public int Speed;
-
-        public Dictionary<ConsoleKey, Movement> MovementMap = new Dictionary<ConsoleKey, Movement>
+        public Dictionary<ConsoleKey, Movement> ConsoleKeyMovementMap = new Dictionary<ConsoleKey, Movement>
         {
-            { ConsoleKey.RightArrow, Enumerations.Movement.Right },
-            { ConsoleKey.LeftArrow, Enumerations.Movement.Left },
-            { ConsoleKey.UpArrow, Enumerations.Movement.Up },
-            { ConsoleKey.DownArrow, Enumerations.Movement.Down }
+            { ConsoleKey.RightArrow, Movement.Right },
+            { ConsoleKey.LeftArrow, Movement.Left },
+            { ConsoleKey.UpArrow, Movement.Up },
+            { ConsoleKey.DownArrow, Movement.Down }
         };
 
+        public GameResult? Death { get; set; }
+
+        public string DiffSel { get; set; }
+
+        public int HighScore = 1;
+
+        public int Speed { get; set; }
+
+        public string UserHighScoreName { get; set; }
+        
         public Game()
         {
             Start();
-            InitBoard();
-            InitSnake();
-            InitApple();
+
+            Apple = new Apple();
+
+            Snake = new Snake();
         }
         
-        public void Start() //difficulty prompt... i want this to return a value to the Main
+        public void Start()
         {
-            GameHasEnded = false;
-            Death = 0;
             Console.WriteLine("Welcome to SSSSSNAKE! Try not to die!\nSelect Difficulty: 1=Hardest 5=Easiest");
-            DiffSel = Console.ReadLine();
+
             int difficulty;
 
-            if (int.TryParse(DiffSel, out difficulty) && difficulty <= 5 && difficulty > 0)
+            if (int.TryParse(Console.ReadLine(), out difficulty) && difficulty <= 5 && difficulty > 0)
             {
                 Speed = 30 * difficulty;
             }
@@ -84,227 +78,102 @@ namespace Snake2
                     DiffSel = "very easy";
                     break;
             }
+            
+            InitBoard();
         }
 
         public void Run()
         {
-            Movement[1] = Enumerations.Movement.Right;
-
-            while (!GameHasEnded)
+            while (!Death.HasValue)
             {
                 Thread.Sleep(Speed);
-                EndCheck(); 
 
-                if (AppleX == SnakeX[1] && AppleY == SnakeY[1]) //check if the apple was got
+                if (EndCheck())
                 {
-                    AppleGot = true;
-                    BodyGrow();
+                    break;
                 }
 
-                for (int i = SnakeLength; i > 0; i--) //index movement array
+                if (Apple.AppleX == Snake.SnakeX[1] && Apple.AppleY == Snake.SnakeY[1])
                 {
-                    Movement[i + 1] = Movement[i];
+                    Apple.GotApple = true;
+                    Snake.BodyGrow();
                 }
+                
+                Console.Clear();
 
-                Snake(); //draws snake every scan
-                Apple(); //draws apple every scan
+                Scoreboard();
 
-                if (Console.KeyAvailable) //key input
+                Snake.Draw();
+
+                Apple.Draw();
+
+                if (Console.KeyAvailable)
                 {
-                    var turn = Console.ReadKey(true).Key;
-
-                    if (turn.Equals(ConsoleKey.RightArrow) && Movement[1] != Enumerations.Movement.Right)
+                    Movement nextMovement;
+                    
+                    if (ConsoleKeyMovementMap.TryGetValue(Console.ReadKey(true).Key, out nextMovement) && nextMovement != Snake.Movement[1])
                     {
-                        Movement[1] = Enumerations.Movement.Right;
-                    }
-
-                    if (turn.Equals(ConsoleKey.LeftArrow) && Movement[1] != Enumerations.Movement.Left)
-                    {
-                        Movement[1] = Enumerations.Movement.Left;
-                    }
-
-                    if (turn.Equals(ConsoleKey.UpArrow) && Movement[1] != Enumerations.Movement.Up)
-                    {
-                        Movement[1] = Enumerations.Movement.Up;
-                    }
-
-                    if (turn.Equals(ConsoleKey.DownArrow) && Movement[1] != Enumerations.Movement.Down)
-                    {
-                        Movement[1] = Enumerations.Movement.Down;
+                        Snake.Movement[1] = nextMovement;
                     }
                 }
 
-                for (int i = 1; i <= SnakeLength; i++) //changes direction of snake based on key input
-                {
-                    switch (Movement[i])
-                    {
-                        case Enumerations.Movement.Right:
-                            SnakeX[i]++;
-                            break;
-
-                        case Enumerations.Movement.Left:
-                            SnakeX[i]--;
-                            break;
-
-                        case Enumerations.Movement.Down:
-                            SnakeY[i]++;
-                            break;
-
-                        case Enumerations.Movement.Up:
-                            SnakeY[i]--;
-                            break;
-                    }
-                }
+                Snake.Update();
             }
         }
 
-        public void EndCheck() //checks for game end... i want this to return a value to Move
+        public bool EndCheck()
         {
-            if (SnakeX[1] <= 0 || SnakeY[1] <= 0 || SnakeX[1] == Width || SnakeY[1] == Height) //border crash
-            {
-                Death = 1;
-                GameHasEnded = true;
-            }
+            Death = Snake.CheckIfSnakeDied();
 
-            for (int i = 2; i <= SnakeLength; i++) //eaten itself
-            {
-                if (SnakeX[1] == SnakeX[i] && SnakeY[1] == SnakeY[i])
-                {
-                    Death = 2;
-                    GameHasEnded = true;
-                }
-            }
+            return Death.HasValue;
         }
 
-        public void PrintHighScore() //if high score is acheived, enter name prompt
+        public void PrintHighScore()
         {
             Console.Clear();
+
+            var snakeLength = Snake.SnakeLength;
             
-            if (SnakeLength > HighScore) //check for high score
+            if (snakeLength > HighScore)
             {
+                HighScore = snakeLength;
                 Console.WriteLine("Congratulations! New High Score of {0}!! Enter your name:", HighScore - 1);
                 UserHighScoreName = Console.ReadLine();
             }
 
-            if (Death == 1)
+            if (Death == GameResult.CrashedIntoWall)
             {
                 Console.WriteLine("You ran into the wall, OUCH!");
             }
-            else if (Death == 2)
+            else if (Death == GameResult.CrashedIntoSelf)
             {
                 Console.WriteLine("You ate yourself, YUM!");
             }
 
             Console.WriteLine("You scored {0} on {1}\nHigh score is {2} held by {3}\nPress any key to play again. Press ctrl + c to exit."
-                , SnakeLength - 1, DiffSel, HighScore - 1, UserHighScoreName);
+                , snakeLength - 1, DiffSel, HighScore - 1, UserHighScoreName);
 
             Console.ReadLine();
 
             Console.Clear();
         }
 
-        public void Apple() //draws the apple
+        public void Scoreboard()
         {
-            Console.SetCursorPosition(AppleX, AppleY); //constantly writes apple which x and y only change on appleGot
-            Console.Write("■");
-
-            if (AppleGot) //randomly decide apple x and y
-            {
-                Random rand = new Random();
-                AppleX = rand.Next(1, Width - 1);
-                AppleY = rand.Next(1, Height - 1);
-                AppleGot = false;
-            }
-        }
-
-        public void Scoreboard() //displays score, difficulty, and high score
-        {
-            Console.WriteLine("SSSSSNAKE!  Score: {0}  Difficulty: {1}  High Score: {2}", SnakeLength - 1, DiffSel, HighScore - 1);
-        }
-
-        public void Snake() //draws the snake
-        {
-            Console.Clear(); //clears the console so X doesn't show up every scan
-            Scoreboard(); //draw scoreboard every scan           
-
-            for (int i = 1; i <= SnakeLength; i++) //writes the snakes body
-            {
-                Console.SetCursorPosition(SnakeX[i], SnakeY[i]);
-                Console.Write("■");
-            }
+            Console.WriteLine("SSSSSNAKE!  Score: {0}  Difficulty: {1}  High Score: {2}", Snake.SnakeLength - 1, DiffSel, HighScore - 1);
         }
 
         public void InitBoard()
         {
-            if (Console.WindowHeight < Height)
+            if (Console.WindowHeight < 40)
             {
-                Console.WindowHeight = Height;
+                Console.WindowHeight = 40;
             }
             
-            if (Console.WindowWidth < Width)
+            if (Console.WindowWidth < 100)
             {
-                Console.WindowWidth = Width;
+                Console.WindowWidth = 100;
             }
-        }
-
-        public void InitSnake() 
-        {
-            Random start = new Random();
-            SnakeX[1] = start.Next(1, Width - 1);
-            SnakeY[1] = start.Next(1, Height - 1);
-            Console.SetCursorPosition(SnakeX[1], SnakeY[1]);
-            SnakeLength = 1;
-        }
-
-        public void InitApple() //draws the initial apple
-        {
-            while (true)
-            {
-                Random rand = new Random();
-                AppleX = rand.Next(1, Width - 1);
-                AppleY = rand.Next(1, Height - 1);
-                Console.SetCursorPosition(AppleX, AppleY);
-
-                if (SnakeX[1] != AppleX || SnakeY[1] != AppleY) //makes sure the apple and snake aren't at the same spot
-                {
-                    Console.Write("O");
-                    break;
-                }
-                else
-                {
-                    AppleX = rand.Next(1, 74);
-                    AppleY = rand.Next(1, 49);
-                }
-            }
-        }
-
-        public void BodyGrow() //this runs when the body grows
-        {
-            for (int i = 1; i <= SnakeLength; i++) //if a piece is got, the next piece's position is incremented here
-            {
-                if (Movement[i] == Enumerations.Movement.Right)
-                {
-                    SnakeX[i + 1] = SnakeX[i] - 1;
-                    SnakeY[i + 1] = SnakeY[i];
-                }
-                else if (Movement[i] == Enumerations.Movement.Left)
-                {
-                    SnakeX[i + 1] = SnakeX[i] + 1;
-                    SnakeY[i + 1] = SnakeY[i];
-                }
-                else if (Movement[i] == Enumerations.Movement.Down)
-                {
-                    SnakeY[i + 1] = SnakeY[i] - 1;
-                    SnakeX[i + 1] = SnakeX[i];
-                }
-                else if (Movement[i] == Enumerations.Movement.Up)
-                {
-                    SnakeY[i + 1] = SnakeY[i] + 1;
-                    SnakeX[i + 1] = SnakeX[i];
-                }
-            }
-
-            SnakeLength++; //incremement snake length after body coordiantes are updated
         }
     }
 }

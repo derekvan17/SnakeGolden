@@ -11,9 +11,8 @@
 
     public enum GameResult
     {
-        GotApple = 0,
-        CrashedIntoSelf = 1,
-        CrashedIntoWall = 2
+        CrashedIntoSelf = 0,
+        CrashedIntoWall = 1
     }
 
     public enum Movement
